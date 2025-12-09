@@ -1,4 +1,4 @@
-from rest_framework import generics, permissions, status
+from rest_framework import generics, permissions, status, serializers
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from .permissions import IsOwnerOrReadOnly
@@ -6,6 +6,8 @@ from .models import Ad, Proposal
 from .serializers import AdSerializer, ProposalSerializer
 from .serializers import CommentSerializer
 from .models import Comment
+from .serializers import RatingSerializer
+from .models import Rating
 
 
 class AdListCreateView(generics.ListCreateAPIView):
@@ -74,3 +76,34 @@ class CommentDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
+
+
+class RatingListCreateView(generics.ListCreateAPIView):
+    serializer_class = RatingSerializer
+
+    def get_queryset(self):
+        contractor_id = self.kwargs.get('contractor_id')
+        if contractor_id:
+            return Rating.objects.filter(contractor_id=contractor_id).order_by('-created_at')
+        return Rating.objects.all().order_by('-created_at')
+
+    def perform_create(self, serializer):
+        # Only customers should be able to rate
+        if not hasattr(self.request.user, 'role') or self.request.user.role != 'customer':
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied('Only customers can rate contractors')
+        # Ensure contractor is a user with contractor role
+        contractor_id = self.request.data.get('contractor')
+        if not contractor_id:
+            raise serializers.ValidationError({'contractor': 'This field is required.'})
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        try:
+            contractor = User.objects.get(pk=contractor_id)
+        except User.DoesNotExist:
+            from rest_framework.exceptions import NotFound
+            raise NotFound('Contractor not found')
+        if contractor.role != 'contractor':
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError('You can only rate contractors')
+        serializer.save(rater=self.request.user, contractor=contractor)

@@ -113,4 +113,20 @@ class UserAuthTests(TestCase):
         resp4 = self.client.patch(reverse('comment-detail', kwargs={'pk': comment_id}), {'text': 'Updated'}, format='json')
         self.assertEqual(resp4.status_code, 200)
 
+    def test_customer_can_rate_contractor(self):
+        customer = User.objects.create_user(username='ratecust', password='rcpass', role='customer')
+        contractor = User.objects.create_user(username='ratecont', password='rtpass', role='contractor')
+        self.client.force_authenticate(user=customer)
+        resp = self.client.post(reverse('ratings-list-create'), {'contractor': contractor.id, 'score': 5, 'comment': 'Great job!'}, format='json')
+        self.assertEqual(resp.status_code, 201)
+        from core.models import Rating
+        self.assertEqual(Rating.objects.filter(contractor=contractor).count(), 1)
+
+    def test_non_customer_cannot_rate(self):
+        contractor1 = User.objects.create_user(username='cont1', password='p', role='contractor')
+        contractor2 = User.objects.create_user(username='cont2', password='p', role='contractor')
+        self.client.force_authenticate(user=contractor1)
+        resp = self.client.post(reverse('ratings-list-create'), {'contractor': contractor2.id, 'score': 4}, format='json')
+        self.assertEqual(resp.status_code, 403)
+
     

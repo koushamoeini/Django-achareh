@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import AdListCreateView, AdDetailView, ProposalListCreateView, ProposalAcceptView, AdCommentsListCreateView, CommentDetailView
+from .views import AdListCreateView, AdDetailView, ProposalListCreateView, ProposalAcceptView, AdCommentsListCreateView, CommentDetailView, RatingListCreateView
 
 urlpatterns = [
     path('ads/', AdListCreateView.as_view(), name='ad-list-create'),
@@ -8,4 +8,6 @@ urlpatterns = [
     path('proposals/<int:pk>/accept/', ProposalAcceptView.as_view(), name='proposal-accept'),
     path('ads/<int:ad_id>/comments/', AdCommentsListCreateView.as_view(), name='ad-comments-list-create'),
     path('comments/<int:pk>/', CommentDetailView.as_view(), name='comment-detail'),
+    path('contractors/<int:contractor_id>/ratings/', RatingListCreateView.as_view(), name='contractor-ratings-list-create'),
+    path('ratings/', RatingListCreateView.as_view(), name='ratings-list-create'),
 ]

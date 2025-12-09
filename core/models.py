@@ -39,3 +39,14 @@ class Comment(models.Model):
 
     def __str__(self):
         return f"Comment {self.id} by {self.author} on {self.ad}"
+
+
+class Rating(models.Model):
+    contractor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='ratings_received')
+    rater = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='ratings_given')
+    score = models.PositiveSmallIntegerField()
+    comment = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Rating {self.score} for {self.contractor} by {self.rater}"

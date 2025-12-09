@@ -2,6 +2,7 @@ from rest_framework import serializers
 from .models import Ad, Proposal
 from users.serializers import UserSerializer
 from .models import Comment
+from .models import Rating
 
 
 class AdSerializer(serializers.ModelSerializer):
@@ -26,3 +27,12 @@ class CommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
         fields = ['id', 'ad', 'author', 'text', 'created_at']
+
+
+class RatingSerializer(serializers.ModelSerializer):
+    rater = UserSerializer(read_only=True)
+    contractor = UserSerializer(read_only=True)
+
+    class Meta:
+        model = Rating
+        fields = ['id', 'contractor', 'rater', 'score', 'comment', 'created_at']
