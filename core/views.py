@@ -4,6 +4,8 @@ from rest_framework.views import APIView
 from .permissions import IsOwnerOrReadOnly
 from .models import Ad, Proposal
 from .serializers import AdSerializer, ProposalSerializer
+from .serializers import CommentSerializer
+from .models import Comment
 
 
 class AdListCreateView(generics.ListCreateAPIView):
@@ -55,3 +57,20 @@ class ProposalAcceptView(APIView):
         ad.status = 'assigned'
         ad.save()
         return Response({'detail': 'Proposal accepted.'})
+
+
+class AdCommentsListCreateView(generics.ListCreateAPIView):
+    serializer_class = CommentSerializer
+
+    def get_queryset(self):
+        ad_id = self.kwargs.get('ad_id')
+        return Comment.objects.filter(ad_id=ad_id).order_by('-created_at')
+
+    def perform_create(self, serializer):
+        serializer.save(author=self.request.user)
+
+
+class CommentDetailView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Comment.objects.all()
+    serializer_class = CommentSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]

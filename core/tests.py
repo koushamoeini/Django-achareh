@@ -3,6 +3,7 @@ from django.urls import reverse
 from rest_framework.test import APIClient
 from users.models import User
 from .models import Ad
+from .models import Comment
 
 
 class AdAPITest(TestCase):
@@ -91,5 +92,25 @@ class UserAuthTests(TestCase):
         self.client.force_authenticate(user=customer)
         response = self.client.post(reverse('proposal-list-create'), {'ad': ad.id, 'price': '20.00'}, format='json')
         self.assertEqual(response.status_code, 403)
+
+    def test_user_can_comment_and_author_can_update(self):
+        # Users can comment on ad
+        customer = User.objects.create_user(username='cust3', password='cust3pass', role='customer')
+        self.client.force_authenticate(user=customer)
+        resp = self.client.post(reverse('ad-list-create'), {'title': 'Ad B', 'description': 'd'}, format='json')
+        ad_id = resp.data['id']
+        # another user comments
+        commenter = User.objects.create_user(username='c', password='p', role='contractor')
+        self.client.force_authenticate(user=commenter)
+        resp2 = self.client.post(reverse('ad-comments-list-create', kwargs={'ad_id': ad_id}), {'ad': ad_id, 'text': 'Hello'}, format='json')
+        self.assertEqual(resp2.status_code, 201)
+        comment_id = resp2.data['id']
+        # check that only author can update
+        self.client.force_authenticate(user=customer)
+        resp3 = self.client.patch(reverse('comment-detail', kwargs={'pk': comment_id}), {'text': 'Hacked'}, format='json')
+        self.assertEqual(resp3.status_code, 403)
+        self.client.force_authenticate(user=commenter)
+        resp4 = self.client.patch(reverse('comment-detail', kwargs={'pk': comment_id}), {'text': 'Updated'}, format='json')
+        self.assertEqual(resp4.status_code, 200)
 
     

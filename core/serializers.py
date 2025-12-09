@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import Ad, Proposal
 from users.serializers import UserSerializer
+from .models import Comment
 
 
 class AdSerializer(serializers.ModelSerializer):
@@ -17,3 +18,11 @@ class ProposalSerializer(serializers.ModelSerializer):
     class Meta:
         model = Proposal
         fields = ['id', 'ad', 'contractor', 'price', 'message', 'created_at', 'accepted']
+
+
+class CommentSerializer(serializers.ModelSerializer):
+    author = UserSerializer(read_only=True)
+
+    class Meta:
+        model = Comment
+        fields = ['id', 'ad', 'author', 'text', 'created_at']
