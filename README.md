@@ -48,3 +48,8 @@ After starting the server, the documentation endpoints are available at:
 
 If you'd like, I can also prepare ready-to-run `curl` commands or a PowerShell script that exercises the main endpoints end-to-end for quick verification.
 
+**Upload checklist:**
+- Delete `db.sqlite3` (or any local database file) and any `__pycache__`/`.pyc` artifacts so the repo only contains source, migrations and docs.
+- After cloning, run `python manage.py migrate` followed by `python manage.py seed_examples` to rebuild the schema and demo data.
+- Use the seeded admin panel account `demo_admin` / `DemoPass123` (superuser + staff) to log in at `/admin/` once the server is running.
+
