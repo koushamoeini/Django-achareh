@@ -176,6 +176,88 @@ class UserAuthTests(TestCase):
         self.assertEqual(lresp2.status_code, 200)
         self.assertEqual(len(lresp2.data), 2)
 
+    def test_proposal_complete_and_confirm(self):
+        # Set up customer, contractor, ad, proposal
+        customer = User.objects.create_user(username='ccomp', password='p', role='customer')
+        contractor = User.objects.create_user(username='contcomp', password='p', role='contractor')
+        self.client.force_authenticate(user=customer)
+        ad_resp = self.client.post(reverse('ad-list-create'), {'title': 'ToComplete', 'description': 'desc'}, format='json')
+        ad_id = ad_resp.data['id']
+        self.client.force_authenticate(user=contractor)
+        prop_resp = self.client.post(reverse('proposal-list-create'), {'ad': ad_id, 'price': '40'}, format='json')
+        prop_id = prop_resp.data['id']
+        # Customer accepts proposal
+        self.client.force_authenticate(user=customer)
+        resp_accept = self.client.post(reverse('proposal-accept', kwargs={'pk': prop_id}), format='json')
+        self.assertEqual(resp_accept.status_code, 200)
+        # Contractor marks completed
+        self.client.force_authenticate(user=contractor)
+        resp_complete = self.client.post(reverse('proposal-complete', kwargs={'pk': prop_id}), format='json')
+        self.assertEqual(resp_complete.status_code, 200)
+        # Customer confirms completion
+        self.client.force_authenticate(user=customer)
+        resp_confirm = self.client.post(reverse('proposal-confirm', kwargs={'pk': prop_id}), format='json')
+        self.assertEqual(resp_confirm.status_code, 200)
+        from core.models import Proposal, Ad
+        prop = Proposal.objects.get(pk=prop_id)
+        ad = Ad.objects.get(pk=ad_id)
+        self.assertTrue(prop.completed)
+        self.assertEqual(ad.status, 'done')
+
+    def test_ratings_filters_and_contractor_profile(self):
+        # Create contractor and several ratings to check filters and profile
+        contractor = User.objects.create_user(username='ratetest', password='p', role='contractor')
+        customer1 = User.objects.create_user(username='c1', password='p', role='customer')
+        customer2 = User.objects.create_user(username='c2', password='p', role='customer')
+        self.client.force_authenticate(user=customer1)
+        r1 = self.client.post(reverse('ratings-list-create'), {'contractor': contractor.id, 'score': 5, 'comment': 'Great'}, format='json')
+        self.assertEqual(r1.status_code, 201)
+        self.client.force_authenticate(user=customer2)
+        r2 = self.client.post(reverse('ratings-list-create'), {'contractor': contractor.id, 'score': 3, 'comment': 'Good'}, format='json')
+        self.assertEqual(r2.status_code, 201)
+        # filter ratings by min_score
+        gresp = self.client.get(reverse('contractor-ratings-list-create', kwargs={'contractor_id': contractor.id}) + '?min_score=4')
+        self.assertEqual(gresp.status_code, 200)
+        self.assertEqual(len(gresp.data), 1)
+        # check contractor profile avg & count
+        profile_resp = self.client.get(reverse('contractor-profile', kwargs={'pk': contractor.id}))
+        self.assertEqual(profile_resp.status_code, 200)
+        self.assertEqual(profile_resp.data['ratings_count'], 2)
+        self.assertAlmostEqual(profile_resp.data['avg_rating'], 4.0)
+
+    def test_contractor_list_filter_and_order(self):
+        cont1 = User.objects.create_user(username='cl1', password='p', role='contractor')
+        cont2 = User.objects.create_user(username='cl2', password='p', role='contractor')
+        cust = User.objects.create_user(username='clcust', password='p', role='customer')
+        # give cont1 three 5-star ratings; cont2 one 4-star
+        self.client.force_authenticate(user=cust)
+        self.client.post(reverse('ratings-list-create'), {'contractor': cont1.id, 'score': 5}, format='json')
+        self.client.post(reverse('ratings-list-create'), {'contractor': cont1.id, 'score': 5}, format='json')
+        self.client.post(reverse('ratings-list-create'), {'contractor': cont1.id, 'score': 5}, format='json')
+        self.client.post(reverse('ratings-list-create'), {'contractor': cont2.id, 'score': 4}, format='json')
+        # list contractors ordered by avg_rating
+        lresp = self.client.get(reverse('contractor-list') + '?order_by=avg_rating')
+        self.assertEqual(lresp.status_code, 200)
+        # first contractor should have higher avg rating
+        self.assertEqual(lresp.data[0]['id'], cont1.id)
+        # filter by min_reviews (cont1 has 3, cont2 has 1)
+        mresp = self.client.get(reverse('contractor-list') + '?min_reviews=2')
+        self.assertEqual(len(mresp.data), 1)
+
+    def test_admin_can_change_user_role(self):
+        admin = User.objects.create_superuser(username='super', password='sp', email='s@example.com')
+        target = User.objects.create_user(username='tuser', password='t', role='customer')
+        self.client.force_authenticate(user=admin)
+        resp = self.client.patch(reverse('user-role-update', kwargs={'pk': target.id}), {'role': 'contractor'}, format='json')
+        self.assertEqual(resp.status_code, 200)
+        target.refresh_from_db()
+        self.assertEqual(target.role, 'contractor')
+        # non-admin cannot change
+        other = User.objects.create_user(username='regular', password='p', role='customer')
+        self.client.force_authenticate(user=other)
+        resp2 = self.client.patch(reverse('user-role-update', kwargs={'pk': target.id}), {'role': 'customer'}, format='json')
+        self.assertEqual(resp2.status_code, 403)
+
     def test_filter_ads_by_status_and_title(self):
         cust = User.objects.create_user(username='custfilter', password='p', role='customer')
         self.client.force_authenticate(user=cust)
@@ -186,5 +268,45 @@ class UserAuthTests(TestCase):
         self.assertEqual(len(resp.data), 1)
         resp2 = self.client.get(reverse('ad-list-create') + '?title=FilterMe')
         self.assertEqual(len(resp2.data), 1)
+
+    def test_ad_detail_nested_proposals_and_comments(self):
+        # Setup ad, proposal and comment
+        customer = User.objects.create_user(username='nested_cust', password='p', role='customer')
+        contractor = User.objects.create_user(username='nested_cont', password='p', role='contractor')
+        self.client.force_authenticate(user=customer)
+        ad_resp = self.client.post(reverse('ad-list-create'), {'title': 'Nested', 'description': 'desc'}, format='json')
+        ad_id = ad_resp.data['id']
+        self.client.force_authenticate(user=contractor)
+        self.client.post(reverse('proposal-list-create'), {'ad': ad_id, 'price': '50', 'message': 'I can do'}, format='json')
+        # add comment
+        self.client.force_authenticate(user=contractor)
+        self.client.post(reverse('ad-comments-list-create', kwargs={'ad_id': ad_id}), {'ad': ad_id, 'text': 'Hello'}, format='json')
+        # fetch ad detail
+        self.client.force_authenticate(user=customer)
+        get_resp = self.client.get(reverse('ad-detail', kwargs={'pk': ad_id}))
+        self.assertEqual(get_resp.status_code, 200)
+        self.assertIn('proposals', get_resp.data)
+        self.assertIn('comments', get_resp.data)
+        self.assertGreaterEqual(len(get_resp.data['proposals']), 1)
+        self.assertGreaterEqual(len(get_resp.data['comments']), 1)
+
+    def test_contractor_schedule_create_and_view(self):
+        # Create contractor and schedule
+        contractor = User.objects.create_user(username='cont_sched', password='p', role='contractor')
+        self.client.force_authenticate(user=contractor)
+        resp = self.client.post(reverse('contractor-schedule-list-create', kwargs={'contractor_id': contractor.id}), {'day_of_week': 0, 'start_time': '09:00:00', 'end_time': '12:00:00', 'is_available': True, 'location': 'Tehran'}, format='json')
+        # contractor should be able to create schedule
+        self.assertEqual(resp.status_code, 201)
+        sid = resp.data['id']
+        # a customer can view contractor schedule
+        customer = User.objects.create_user(username='cust_view', password='p', role='customer')
+        self.client.force_authenticate(user=customer)
+        vresp = self.client.get(reverse('contractor-schedule-list-create', kwargs={'contractor_id': contractor.id}))
+        self.assertEqual(vresp.status_code, 200)
+        self.assertGreaterEqual(len(vresp.data), 1)
+        # non-contractor cannot create schedule
+        self.client.force_authenticate(user=customer)
+        resp2 = self.client.post(reverse('contractor-schedule-list-create', kwargs={'contractor_id': contractor.id}), {'day_of_week': 1, 'start_time': '13:00:00', 'end_time': '16:00:00'}, format='json')
+        self.assertEqual(resp2.status_code, 403)
 
     

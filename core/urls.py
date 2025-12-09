@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import AdListCreateView, AdDetailView, ProposalListCreateView, ProposalAcceptView, AdCommentsListCreateView, CommentDetailView, RatingListCreateView, TicketListCreateView, TicketDetailView
+from .views import AdListCreateView, AdDetailView, ProposalListCreateView, ProposalAcceptView, AdCommentsListCreateView, CommentDetailView, RatingListCreateView, TicketListCreateView, TicketDetailView, ScheduleListCreateView, ScheduleDetailView, ProposalCompleteView, ProposalConfirmCompletionView, ContractorProfileView, ContractorListView, UserRoleUpdateView
 
 urlpatterns = [
     path('ads/', AdListCreateView.as_view(), name='ad-list-create'),
@@ -12,4 +12,11 @@ urlpatterns = [
     path('ratings/', RatingListCreateView.as_view(), name='ratings-list-create'),
     path('tickets/', TicketListCreateView.as_view(), name='tickets-list-create'),
     path('tickets/<int:pk>/', TicketDetailView.as_view(), name='ticket-detail'),
+    path('contractors/<int:contractor_id>/schedule/', ScheduleListCreateView.as_view(), name='contractor-schedule-list-create'),
+    path('schedules/<int:pk>/', ScheduleDetailView.as_view(), name='schedule-detail'),
+    path('proposals/<int:pk>/complete/', ProposalCompleteView.as_view(), name='proposal-complete'),
+    path('proposals/<int:pk>/confirm/', ProposalConfirmCompletionView.as_view(), name='proposal-confirm'),
+    path('contractors/<int:pk>/profile/', ContractorProfileView.as_view(), name='contractor-profile'),
+    path('contractors/', ContractorListView.as_view(), name='contractor-list'),
+    path('users/<int:pk>/role/', UserRoleUpdateView.as_view(), name='user-role-update'),
 ]

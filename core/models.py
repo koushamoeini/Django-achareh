@@ -11,6 +11,13 @@ class Ad(models.Model):
     ]
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
+    # Additional fields
+    budget = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    category = models.CharField(max_length=100, blank=True)
+    location = models.CharField(max_length=255, blank=True)
+    start_date = models.DateField(null=True, blank=True)
+    end_date = models.DateField(null=True, blank=True)
+    hours_per_day = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True)
     creator = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='ads')
     created_at = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='open')
@@ -26,6 +33,7 @@ class Proposal(models.Model):
     message = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     accepted = models.BooleanField(default=False)
+    completed = models.BooleanField(default=False)
 
     def __str__(self):
         return f"Proposal by {self.contractor} for {self.ad}"
@@ -68,3 +76,24 @@ class Ticket(models.Model):
 
     def __str__(self):
         return f"Ticket {self.id} - {self.title} ({self.status})"
+
+
+class Schedule(models.Model):
+    DAYS = [
+        (0, 'Monday'),
+        (1, 'Tuesday'),
+        (2, 'Wednesday'),
+        (3, 'Thursday'),
+        (4, 'Friday'),
+        (5, 'Saturday'),
+        (6, 'Sunday'),
+    ]
+    contractor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='schedules')
+    day_of_week = models.PositiveSmallIntegerField(choices=DAYS)
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+    location = models.CharField(max_length=255, blank=True)
+    is_available = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f"Schedule {self.contractor} day {self.day_of_week} {self.start_time}-{self.end_time}"
