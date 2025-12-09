@@ -169,12 +169,14 @@ class UserAuthTests(TestCase):
         self.client.force_authenticate(user=cont1)
         lresp = self.client.get(reverse('proposal-list-create'))
         self.assertEqual(lresp.status_code, 200)
-        self.assertEqual(len(lresp.data), 1)
+        ldata = lresp.data.get('results', lresp.data)
+        self.assertEqual(len(ldata), 1)
         # customer should see both proposals for his ad
         self.client.force_authenticate(user=customer)
         lresp2 = self.client.get(reverse('proposal-list-create'))
         self.assertEqual(lresp2.status_code, 200)
-        self.assertEqual(len(lresp2.data), 2)
+        ldata2 = lresp2.data.get('results', lresp2.data)
+        self.assertEqual(len(ldata2), 2)
 
     def test_proposal_complete_and_confirm(self):
         # Set up customer, contractor, ad, proposal
@@ -218,7 +220,8 @@ class UserAuthTests(TestCase):
         # filter ratings by min_score
         gresp = self.client.get(reverse('contractor-ratings-list-create', kwargs={'contractor_id': contractor.id}) + '?min_score=4')
         self.assertEqual(gresp.status_code, 200)
-        self.assertEqual(len(gresp.data), 1)
+        gresults = gresp.data.get('results', gresp.data)
+        self.assertEqual(len(gresults), 1)
         # check contractor profile avg & count
         profile_resp = self.client.get(reverse('contractor-profile', kwargs={'pk': contractor.id}))
         self.assertEqual(profile_resp.status_code, 200)
@@ -239,10 +242,12 @@ class UserAuthTests(TestCase):
         lresp = self.client.get(reverse('contractor-list') + '?order_by=avg_rating')
         self.assertEqual(lresp.status_code, 200)
         # first contractor should have higher avg rating
-        self.assertEqual(lresp.data[0]['id'], cont1.id)
+        lresults = lresp.data.get('results', lresp.data)
+        self.assertEqual(lresults[0]['id'], cont1.id)
         # filter by min_reviews (cont1 has 3, cont2 has 1)
         mresp = self.client.get(reverse('contractor-list') + '?min_reviews=2')
-        self.assertEqual(len(mresp.data), 1)
+        mresults = mresp.data.get('results', mresp.data)
+        self.assertEqual(len(mresults), 1)
 
     def test_admin_can_change_user_role(self):
         admin = User.objects.create_superuser(username='super', password='sp', email='s@example.com')
@@ -265,9 +270,11 @@ class UserAuthTests(TestCase):
         self.client.post(reverse('ad-list-create'), {'title': 'Other', 'description': 'd', 'status': 'done'}, format='json')
         resp = self.client.get(reverse('ad-list-create') + '?status=open')
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(len(resp.data), 1)
+        results = resp.data.get('results', resp.data)
+        self.assertEqual(len(results), 1)
         resp2 = self.client.get(reverse('ad-list-create') + '?title=FilterMe')
-        self.assertEqual(len(resp2.data), 1)
+        results2 = resp2.data.get('results', resp2.data)
+        self.assertEqual(len(results2), 1)
 
     def test_ad_detail_nested_proposals_and_comments(self):
         # Setup ad, proposal and comment
@@ -308,5 +315,36 @@ class UserAuthTests(TestCase):
         self.client.force_authenticate(user=customer)
         resp2 = self.client.post(reverse('contractor-schedule-list-create', kwargs={'contractor_id': contractor.id}), {'day_of_week': 1, 'start_time': '13:00:00', 'end_time': '16:00:00'}, format='json')
         self.assertEqual(resp2.status_code, 403)
+
+    def test_ads_pagination(self):
+        # Create 15 ads and check pagination
+        cust = User.objects.create_user(username='pagcust', password='p', role='customer')
+        self.client.force_authenticate(user=cust)
+        for i in range(15):
+            self.client.post(reverse('ad-list-create'), {'title': f'PAd {i}', 'description': 'd'}, format='json')
+        resp = self.client.get(reverse('ad-list-create'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.data['count'], 15)
+        self.assertEqual(len(resp.data['results']), 10)
+        resp2 = self.client.get(reverse('ad-list-create') + '?page=2')
+        self.assertEqual(len(resp2.data['results']), 5)
+
+    def test_contractor_list_pagination(self):
+        # create 12 contractors and check contractor list is paginated
+        cust = User.objects.create_user(username='custpage', password='p', role='customer')
+        contractors = []
+        for i in range(12):
+            contractors.append(User.objects.create_user(username=f'contpag{i}', password='p', role='contractor'))
+        # a customer rates some contractors to provide data
+        self.client.force_authenticate(user=cust)
+        for idx, cont in enumerate(contractors):
+            if idx % 2 == 0:
+                self.client.post(reverse('ratings-list-create'), {'contractor': cont.id, 'score': 5}, format='json')
+        lresp = self.client.get(reverse('contractor-list'))
+        self.assertEqual(lresp.status_code, 200)
+        self.assertEqual(lresp.data['count'], 12)
+        self.assertEqual(len(lresp.data['results']), 10)
+        p2 = self.client.get(reverse('contractor-list') + '?page=2')
+        self.assertEqual(len(p2.data['results']), 2)
 
     

@@ -1,9 +1,11 @@
 from rest_framework import generics, permissions, status, serializers
+from rest_framework import filters
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from .permissions import IsOwnerOrReadOnly, IsSupportOrOwner
 from .models import Ad, Proposal
-from .serializers import AdSerializer, ProposalSerializer
+from .serializers import AdSerializer, ProposalSerializer, ContractorListSerializer, ContractorProfileSerializer
 from .serializers import CommentSerializer
 from .models import Comment
 from .serializers import RatingSerializer
@@ -17,6 +19,9 @@ from .serializers import ScheduleSerializer
 class AdListCreateView(generics.ListCreateAPIView):
     queryset = Ad.objects.all().order_by('-created_at')
     serializer_class = AdSerializer
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter, DjangoFilterBackend]
+    search_fields = ['title', 'description']
+    filterset_fields = ['status', 'creator__id', 'category', 'location']
 
     def perform_create(self, serializer):
         # Only customers can create ads
@@ -45,6 +50,8 @@ class AdDetailView(generics.RetrieveUpdateDestroyAPIView):
 class ProposalListCreateView(generics.ListCreateAPIView):
     queryset = Proposal.objects.all().order_by('-created_at')
     serializer_class = ProposalSerializer
+    filter_backends = [filters.OrderingFilter, DjangoFilterBackend]
+    filterset_fields = ['ad', 'accepted', 'completed', 'contractor']
 
     def perform_create(self, serializer):
         # Only contractors can create proposals
@@ -270,24 +277,37 @@ class ContractorProfileView(generics.RetrieveAPIView):
 
 
 class ContractorListView(generics.ListAPIView):
-    serializer_class = None
+    serializer_class = ContractorListSerializer
+    filter_backends = [filters.OrderingFilter, DjangoFilterBackend]
+    ordering_fields = ['avg_rating', 'ratings_count']
 
-    def get(self, request):
+    def get_queryset(self):
         from django.contrib.auth import get_user_model
-        from django.db.models import Avg, Count
-        from .serializers import ContractorListSerializer
         User = get_user_model()
+        from django.db.models import Avg, Count
         qs = User.objects.filter(role='contractor').annotate(avg_rating=Avg('ratings_received__score'), ratings_count=Count('ratings_received'))
-        min_avg = request.query_params.get('min_avg')
-        min_reviews = request.query_params.get('min_reviews')
-        order_by = request.query_params.get('order_by')
+        min_avg = self.request.query_params.get('min_avg')
+        min_reviews = self.request.query_params.get('min_reviews')
+        order_by = self.request.query_params.get('order_by')
         if min_avg:
             qs = qs.filter(avg_rating__gte=float(min_avg))
         if min_reviews:
             qs = qs.filter(ratings_count__gte=int(min_reviews))
         if order_by in ('avg_rating', 'ratings_count'):
             qs = qs.order_by('-' + order_by)
-        serializer = ContractorListSerializer(qs, many=True)
+        else:
+            # provide a stable ordering to avoid unordered pagination warnings
+            qs = qs.order_by('-avg_rating', '-ratings_count', 'id')
+        return qs
+
+    def get(self, request):
+        from django.db.models import Avg, Count
+        qs = self.get_queryset()
+        page_qs = self.paginate_queryset(qs)
+        if page_qs is not None:
+            serializer = self.get_serializer(page_qs, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(qs, many=True)
         return Response(serializer.data)
 
 
