@@ -2,7 +2,7 @@ from rest_framework import serializers
 from .models import Ad, Proposal
 from users.serializers import UserSerializer
 from .models import Comment
-from .models import Rating
+from .models import Rating, Ticket
 
 
 class AdSerializer(serializers.ModelSerializer):
@@ -36,3 +36,12 @@ class RatingSerializer(serializers.ModelSerializer):
     class Meta:
         model = Rating
         fields = ['id', 'contractor', 'rater', 'score', 'comment', 'created_at']
+
+
+class TicketSerializer(serializers.ModelSerializer):
+    creator = UserSerializer(read_only=True)
+    assignee = UserSerializer(read_only=True)
+
+    class Meta:
+        model = Ticket
+        fields = ['id', 'title', 'description', 'creator', 'assignee', 'status', 'created_at', 'updated_at']

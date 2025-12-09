@@ -1,13 +1,15 @@
 from rest_framework import generics, permissions, status, serializers
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from .permissions import IsOwnerOrReadOnly
+from .permissions import IsOwnerOrReadOnly, IsSupportOrOwner
 from .models import Ad, Proposal
 from .serializers import AdSerializer, ProposalSerializer
 from .serializers import CommentSerializer
 from .models import Comment
 from .serializers import RatingSerializer
 from .models import Rating
+from .models import Ticket
+from .serializers import TicketSerializer
 
 
 class AdListCreateView(generics.ListCreateAPIView):
@@ -107,3 +109,36 @@ class RatingListCreateView(generics.ListCreateAPIView):
             from rest_framework.exceptions import ValidationError
             raise ValidationError('You can only rate contractors')
         serializer.save(rater=self.request.user, contractor=contractor)
+
+
+class TicketListCreateView(generics.ListCreateAPIView):
+    serializer_class = TicketSerializer
+    queryset = Ticket.objects.all().order_by('-created_at')
+
+    def perform_create(self, serializer):
+        serializer.save(creator=self.request.user)
+
+
+class TicketDetailView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Ticket.objects.all()
+    serializer_class = TicketSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsSupportOrOwner]
+    
+    def perform_update(self, serializer):
+        # Only support users may set assignee or close the ticket; owner can update title/description
+        assignee_id = self.request.data.get('assignee')
+        if assignee_id:
+            # Only support role can assign
+            if getattr(self.request.user, 'role', None) != 'support':
+                from rest_framework.exceptions import PermissionDenied
+                raise PermissionDenied('Only support users can assign tickets')
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            try:
+                user = User.objects.get(pk=assignee_id)
+            except User.DoesNotExist:
+                from rest_framework.exceptions import NotFound
+                raise NotFound('Assignee not found')
+            serializer.save(assignee=user)
+            return
+        serializer.save()

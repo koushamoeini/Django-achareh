@@ -14,3 +14,14 @@ class IsOwnerOrReadOnly(permissions.BasePermission):
             or getattr(obj, 'contractor', None) == request.user
             or getattr(obj, 'author', None) == request.user
         )
+
+
+class IsSupportOrOwner(permissions.BasePermission):
+    """Allow access to object owner or support users."""
+
+    def has_object_permission(self, request, view, obj):
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        if getattr(request.user, 'role', None) == 'support':
+            return True
+        return getattr(obj, 'creator', None) == request.user

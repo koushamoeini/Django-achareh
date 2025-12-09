@@ -129,4 +129,24 @@ class UserAuthTests(TestCase):
         resp = self.client.post(reverse('ratings-list-create'), {'contractor': contractor2.id, 'score': 4}, format='json')
         self.assertEqual(resp.status_code, 403)
 
+    def test_ticket_create_and_assign(self):
+        customer = User.objects.create_user(username='t_cust', password='t_p', role='customer')
+        support = User.objects.create_user(username='support', password='sup', role='support')
+        other = User.objects.create_user(username='other', password='o', role='customer')
+        self.client.force_authenticate(user=customer)
+        resp = self.client.post(reverse('tickets-list-create'), {'title': 'Help', 'description': 'Need help'}, format='json')
+        self.assertEqual(resp.status_code, 201)
+        ticket_id = resp.data['id']
+        # Other user can't assign
+        self.client.force_authenticate(user=other)
+        resp2 = self.client.patch(reverse('ticket-detail', kwargs={'pk': ticket_id}), {'assignee': support.id}, format='json')
+        self.assertEqual(resp2.status_code, 403)
+        # Support can assign
+        self.client.force_authenticate(user=support)
+        resp3 = self.client.patch(reverse('ticket-detail', kwargs={'pk': ticket_id}), {'assignee': support.id}, format='json')
+        self.assertEqual(resp3.status_code, 200)
+        from core.models import Ticket
+        ticket = Ticket.objects.get(pk=ticket_id)
+        self.assertEqual(ticket.assignee, support)
+
     
