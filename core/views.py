@@ -11,6 +11,10 @@ class AdListCreateView(generics.ListCreateAPIView):
     serializer_class = AdSerializer
 
     def perform_create(self, serializer):
+        # Only customers can create ads
+        if not hasattr(self.request.user, 'role') or self.request.user.role != 'customer':
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied('Only customers can create ads')
         serializer.save(creator=self.request.user)
 
 
@@ -25,6 +29,10 @@ class ProposalListCreateView(generics.ListCreateAPIView):
     serializer_class = ProposalSerializer
 
     def perform_create(self, serializer):
+        # Only contractors can create proposals
+        if not hasattr(self.request.user, 'role') or self.request.user.role != 'contractor':
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied('Only contractors can create proposals')
         serializer.save(contractor=self.request.user)
 
 

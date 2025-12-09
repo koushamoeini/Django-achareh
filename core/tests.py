@@ -37,6 +37,12 @@ class AdAPITest(TestCase):
         response = self.client.patch(url, {'title': 'Hacked'}, format='json')
         self.assertEqual(response.status_code, 403)
 
+    def test_contractor_cannot_create_ad(self):
+        contractor = User.objects.create_user(username='contractor1', password='pass', role='contractor')
+        self.client.force_authenticate(user=contractor)
+        response = self.client.post(reverse('ad-list-create'), {'title': 'CAd', 'description': 'Cdesc'}, format='json')
+        self.assertEqual(response.status_code, 403)
+
 
 class UserAuthTests(TestCase):
     def setUp(self):
@@ -78,5 +84,12 @@ class UserAuthTests(TestCase):
         self.assertTrue(proposal.accepted)
         ad = Ad.objects.get(pk=ad_id)
         self.assertEqual(ad.status, 'assigned')
+
+    def test_customer_cannot_create_proposal(self):
+        customer = User.objects.create_user(username='cust2', password='cust2pass', role='customer')
+        ad = Ad.objects.create(title='A', description='d', creator=customer)
+        self.client.force_authenticate(user=customer)
+        response = self.client.post(reverse('proposal-list-create'), {'ad': ad.id, 'price': '20.00'}, format='json')
+        self.assertEqual(response.status_code, 403)
 
     
