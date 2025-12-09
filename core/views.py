@@ -23,6 +23,16 @@ class AdListCreateView(generics.ListCreateAPIView):
             raise PermissionDenied('Only customers can create ads')
         serializer.save(creator=self.request.user)
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        status_param = self.request.query_params.get('status')
+        title = self.request.query_params.get('title')
+        if status_param:
+            qs = qs.filter(status=status_param)
+        if title:
+            qs = qs.filter(title__icontains=title)
+        return qs
+
 
 class AdDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Ad.objects.all()

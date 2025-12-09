@@ -176,4 +176,15 @@ class UserAuthTests(TestCase):
         self.assertEqual(lresp2.status_code, 200)
         self.assertEqual(len(lresp2.data), 2)
 
+    def test_filter_ads_by_status_and_title(self):
+        cust = User.objects.create_user(username='custfilter', password='p', role='customer')
+        self.client.force_authenticate(user=cust)
+        self.client.post(reverse('ad-list-create'), {'title': 'FilterMe', 'description': 'd', 'status': 'open'}, format='json')
+        self.client.post(reverse('ad-list-create'), {'title': 'Other', 'description': 'd', 'status': 'done'}, format='json')
+        resp = self.client.get(reverse('ad-list-create') + '?status=open')
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data), 1)
+        resp2 = self.client.get(reverse('ad-list-create') + '?title=FilterMe')
+        self.assertEqual(len(resp2.data), 1)
+
     
