@@ -16,6 +16,9 @@ Key Endpoints:
 - `PATCH /api/users/<id>/role/` to change a user's role (admin/superuser only)
 - `GET/POST /api/contractors/<id>/schedule/` and `GET/PATCH/DELETE /api/schedules/<id>/` for contractor availability; includes location/time/availability
 - `GET/POST /api/tickets/` and `GET/PATCH/DELETE /api/tickets/<id>/` for support tickets
+- `GET /api/schema/` (JSON OpenAPI schema),
+- `GET /api/schema/swagger-ui/` (Swagger UI web page),
+- `GET /api/schema/redoc/` (Redoc UI web page),
 
 Filters and Query Params supported:
 - Ratings: `?min_score=` and `?max_score=` for rating lists

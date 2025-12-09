@@ -19,6 +19,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'django_filters',
+    'drf_spectacular',
     'users',
     'core',
 ]
@@ -92,3 +93,12 @@ REST_FRAMEWORK.update({
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10,
 })
+
+# drf-spectacular OpenAPI / Swagger settings
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Achareh API',
+    'DESCRIPTION': 'API for Achareh job advertisement and contracting platform',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+}
+REST_FRAMEWORK['DEFAULT_SCHEMA_CLASS'] = 'drf_spectacular.openapi.AutoSchema'

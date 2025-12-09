@@ -16,11 +16,11 @@ class AdSerializer(serializers.ModelSerializer):
         model = Ad
         fields = ['id', 'title', 'description', 'creator', 'created_at', 'status', 'budget', 'category', 'location', 'start_date', 'end_date', 'hours_per_day', 'proposals', 'comments']
 
-    def get_proposals(self, obj):
+    def get_proposals(self, obj) -> list:
         qs = obj.proposals.all().order_by('-created_at')
         return ProposalSerializer(qs, many=True).data
 
-    def get_comments(self, obj):
+    def get_comments(self, obj) -> list:
         qs = obj.comments.all().order_by('-created_at')
         return CommentSerializer(qs, many=True).data
 
@@ -82,7 +82,7 @@ class ContractorProfileSerializer(serializers.ModelSerializer):
         # include avg and count if annotated in queryset
         return data
 
-    def get_ads(self, obj):
+    def get_ads(self, obj) -> list:
         from .serializers import AdSerializer
         qs = obj.ads.all().order_by('-created_at')
         return AdSerializer(qs, many=True).data
@@ -96,3 +96,11 @@ class ContractorListSerializer(serializers.ModelSerializer):
         from users.models import User
         model = User
         fields = ['id', 'username', 'email', 'avg_rating', 'ratings_count']
+
+
+class ProposalActionSerializer(serializers.Serializer):
+    message = serializers.CharField(read_only=True, help_text='Action result message')
+
+
+class UserRoleUpdateSerializer(serializers.Serializer):
+    role = serializers.CharField(help_text='New role for the user')

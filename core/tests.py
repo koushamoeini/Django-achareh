@@ -316,6 +316,19 @@ class UserAuthTests(TestCase):
         resp2 = self.client.post(reverse('contractor-schedule-list-create', kwargs={'contractor_id': contractor.id}), {'day_of_week': 1, 'start_time': '13:00:00', 'end_time': '16:00:00'}, format='json')
         self.assertEqual(resp2.status_code, 403)
 
+    def test_openapi_schema_and_swagger_ui(self):
+        # schema should be available
+        resp = self.client.get('/api/schema/')
+        self.assertEqual(resp.status_code, 200)
+        # swagger UI should render HTML
+        resp2 = self.client.get('/api/schema/swagger-ui/')
+        self.assertEqual(resp2.status_code, 200)
+        self.assertIn('text/html', resp2.get('Content-Type', ''))
+        # redoc should render HTML
+        resp3 = self.client.get('/api/schema/redoc/')
+        self.assertEqual(resp3.status_code, 200)
+        self.assertIn('text/html', resp3.get('Content-Type', ''))
+
     def test_ads_pagination(self):
         # Create 15 ads and check pagination
         cust = User.objects.create_user(username='pagcust', password='p', role='customer')

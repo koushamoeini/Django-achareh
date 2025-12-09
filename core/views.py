@@ -1,11 +1,12 @@
 from rest_framework import generics, permissions, status, serializers
 from rest_framework import filters
+from drf_spectacular.utils import extend_schema
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from .permissions import IsOwnerOrReadOnly, IsSupportOrOwner
 from .models import Ad, Proposal
-from .serializers import AdSerializer, ProposalSerializer, ContractorListSerializer, ContractorProfileSerializer
+from .serializers import AdSerializer, ProposalSerializer, ContractorListSerializer, ContractorProfileSerializer, ProposalActionSerializer, UserRoleUpdateSerializer
 from .serializers import CommentSerializer
 from .models import Comment
 from .serializers import RatingSerializer
@@ -73,7 +74,9 @@ class ProposalListCreateView(generics.ListCreateAPIView):
         return Proposal.objects.all().order_by('-created_at')
 
 
+@extend_schema(summary='Accept a proposal')
 class ProposalAcceptView(APIView):
+    serializer_class = ProposalActionSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, pk):
@@ -94,7 +97,9 @@ class ProposalAcceptView(APIView):
         return Response({'detail': 'Proposal accepted.'})
 
 
+@extend_schema(summary='Mark proposal as completed')
 class ProposalCompleteView(APIView):
+    serializer_class = ProposalActionSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, pk):
@@ -115,7 +120,9 @@ class ProposalCompleteView(APIView):
         return Response({'detail': 'Proposal marked as completed.'})
 
 
+@extend_schema(summary='Confirm completion of a proposal')
 class ProposalConfirmCompletionView(APIView):
+    serializer_class = ProposalActionSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, pk):
@@ -257,7 +264,7 @@ class ScheduleDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 
 class ContractorProfileView(generics.RetrieveAPIView):
-    serializer_class = None
+    serializer_class = ContractorProfileSerializer
 
     def get(self, request, pk):
         from django.contrib.auth import get_user_model
@@ -311,7 +318,9 @@ class ContractorListView(generics.ListAPIView):
         return Response(serializer.data)
 
 
+@extend_schema(summary='Update user role (admin only)')
 class UserRoleUpdateView(APIView):
+    serializer_class = UserRoleUpdateSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def patch(self, request, pk):
