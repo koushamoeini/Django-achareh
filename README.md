@@ -44,12 +44,4 @@ After starting the server, the documentation endpoints are available at:
 
 **QA / manual testing tips:**
 - Run `python manage.py seed_examples` to create demo accounts and content that exercise common flows (create ad, submit proposal, accept/complete/confirm proposal, submit rating).
-- Use the examples shown in Swagger (or the example payloads you add to the schema) to make valid requests with tools like Postman, HTTPie, or `curl`.
-
-If you'd like, I can also prepare ready-to-run `curl` commands or a PowerShell script that exercises the main endpoints end-to-end for quick verification.
-
-**Upload checklist:**
-- Delete `db.sqlite3` (or any local database file) and any `__pycache__`/`.pyc` artifacts so the repo only contains source, migrations and docs.
-- After cloning, run `python manage.py migrate` followed by `python manage.py seed_examples` to rebuild the schema and demo data.
-- Use the seeded admin panel account `demo_admin` / `DemoPass123` (superuser + staff) to log in at `/admin/` once the server is running.
-
+=
