@@ -149,4 +149,31 @@ class UserAuthTests(TestCase):
         ticket = Ticket.objects.get(pk=ticket_id)
         self.assertEqual(ticket.assignee, support)
 
+    def test_proposal_list_filters(self):
+        # Setup: create ad by customer and two proposals by two contractors
+        customer = User.objects.create_user(username='pcust', password='p', role='customer')
+        cont1 = User.objects.create_user(username='cont1', password='p', role='contractor')
+        cont2 = User.objects.create_user(username='cont2', password='p', role='contractor')
+        self.client.force_authenticate(user=customer)
+        ad_resp = self.client.post(reverse('ad-list-create'), {'title': 'Ad X', 'description': 'desc'}, format='json')
+        ad_id = ad_resp.data['id']
+        # contractor 1 posts proposal
+        self.client.force_authenticate(user=cont1)
+        resp1 = self.client.post(reverse('proposal-list-create'), {'ad': ad_id, 'price': '10.00'}, format='json')
+        self.assertEqual(resp1.status_code, 201)
+        # contractor 2 posts proposal
+        self.client.force_authenticate(user=cont2)
+        resp2 = self.client.post(reverse('proposal-list-create'), {'ad': ad_id, 'price': '20.00'}, format='json')
+        self.assertEqual(resp2.status_code, 201)
+        # contractor1 should only see his proposal
+        self.client.force_authenticate(user=cont1)
+        lresp = self.client.get(reverse('proposal-list-create'))
+        self.assertEqual(lresp.status_code, 200)
+        self.assertEqual(len(lresp.data), 1)
+        # customer should see both proposals for his ad
+        self.client.force_authenticate(user=customer)
+        lresp2 = self.client.get(reverse('proposal-list-create'))
+        self.assertEqual(lresp2.status_code, 200)
+        self.assertEqual(len(lresp2.data), 2)
+
     

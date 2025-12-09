@@ -40,6 +40,18 @@ class ProposalListCreateView(generics.ListCreateAPIView):
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied('Only contractors can create proposals')
         serializer.save(contractor=self.request.user)
+    
+    def get_queryset(self):
+        user = self.request.user
+        if not user.is_authenticated:
+            return Proposal.objects.none()
+        if getattr(user, 'role', None) == 'contractor':
+            return Proposal.objects.filter(contractor=user).order_by('-created_at')
+        if getattr(user, 'role', None) == 'customer':
+            # show proposals for ads created by this customer
+            return Proposal.objects.filter(ad__creator=user).order_by('-created_at')
+        # support or admin or other roles see all
+        return Proposal.objects.all().order_by('-created_at')
 
 
 class ProposalAcceptView(APIView):
