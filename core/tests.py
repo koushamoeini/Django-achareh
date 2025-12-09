@@ -20,3 +20,22 @@ class AdAPITest(TestCase):
         ad = Ad.objects.first()
         self.assertEqual(ad.title, 'Test Ad')
         self.assertEqual(ad.creator, self.user)
+
+
+class UserAuthTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+
+    def test_register_and_login(self):
+        # Register
+        url = '/api/auth/register/'
+        data = {'username': 'newuser', 'password': 'newpass', 'email': 'new@example.com', 'role': 'customer'}
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, 201)
+        # Login
+        url_login = '/api/auth/login/'
+        response = self.client.post(url_login, {'username': 'newuser', 'password': 'newpass'}, format='json')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('token', response.data)
+
+    
