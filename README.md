@@ -53,4 +53,11 @@ Invoke-RestMethod -Uri 'http://127.0.0.1:8000/api/ads/' -Method POST -ContentTyp
 
 If you prefer `curl` commands, use `curl.exe` in PowerShell or use a bash terminal.
 
+### Seed Example Data
+Run the management command to populate demo users and a sample workflow (customer, contractor, support, admin plus an ad, proposal, comment, rating, ticket, and schedule entry). You can rerun it safely—it uses `get_or_create`.
+
+```powershell
+python manage.py seed_examples
+```
+
 More work can be done (optional): file uploads, nested permissions, email notifications, more complex state transitions and workflows. If you want me to add any of those, let me know.
