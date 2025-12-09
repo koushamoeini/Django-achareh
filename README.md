@@ -1,63 +1,50 @@
-# Django Achareh Backend
 
-This repository implements the backend for the Achareh assignment. It contains user authentication and role-based endpoints, Ads, Proposals, Comments, Ratings, Tickets, Schedules and admin features.
+## Achareh — Backend API
 
-Key Endpoints:
-- `POST /api/auth/register/`: register a user (role: customer/contractor/support/admin)
-- `POST /api/auth/login/`: login and receive token
-- `GET /api/ads/` and `POST /api/ads/`: list and create ads (only `customer` can create)
-- `GET /api/ads/<id>/` : ad details (includes nested proposals & comments)
-- `POST /api/proposals/` : create proposal (contractor only); `POST /api/proposals/<id>/accept/` to accept
-- `POST /api/proposals/<id>/complete/` : contractor marks completed
-- `POST /api/proposals/<id>/confirm/` : ad owner confirms completion (ad status -> done)
-- `GET/POST /api/ads/<ad_id>/comments/` and `GET/PATCH/DELETE /api/comments/<id>/` for comments
-- `GET/POST /api/contractors/<id>/ratings/` and `GET /api/ratings/` to list & create ratings (customers only)
-- `GET /api/contractors/` to list contractors (ordering and filters available)
-- `PATCH /api/users/<id>/role/` to change a user's role (admin/superuser only)
-- `GET/POST /api/contractors/<id>/schedule/` and `GET/PATCH/DELETE /api/schedules/<id>/` for contractor availability; includes location/time/availability
-- `GET/POST /api/tickets/` and `GET/PATCH/DELETE /api/tickets/<id>/` for support tickets
-- `GET /api/schema/` (JSON OpenAPI schema),
-- `GET /api/schema/swagger-ui/` (Swagger UI web page),
-- `GET /api/schema/redoc/` (Redoc UI web page),
+This repository contains the backend implementation for a sample service called Achareh, built with Django and Django REST Framework. The API supports managing Ads, Proposals, Comments, Ratings, Tickets, and Schedules, and includes role-based behavior for Customers, Contractors, Support staff, and Admins.
 
-Filters and Query Params supported:
-- Ratings: `?min_score=` and `?max_score=` for rating lists
-- Contractor list: `?order_by=avg_rating|ratings_count`, `?min_avg=`, `?min_reviews=` 
-- Ads: `?status=open|assigned|done|canceled`, `?title=` partial search
+**Tech stack:**
+- Python + Django
+- Django REST Framework (DRF)
+- Token authentication (DRF Token)
+- `django-filter` for filtering
+- `drf-spectacular` for generating OpenAPI / Swagger documentation
 
-Pagination:
-- All list endpoints use PageNumber pagination with `page` query parameter and a default page size of 10. Responses are in the form `{count, next, previous, results}`.
+**Quick start (local):**
 
-Run locally (PowerShell examples):
-1. Create and activate venv, then install dependencies:
 ```powershell
-python -m venv .venv; .\.venv\Scripts\Activate; pip install -r requirements.txt
-```
-2. Run migrations and tests:
-```powershell
-python manage.py makemigrations; python manage.py migrate;
-python manage.py test --verbosity 2
-```
-3. Run the dev server:
-```powershell
+# Activate virtual environment
+.\venv\Scripts\Activate.ps1
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Create and apply migrations
+python manage.py makemigrations
+python manage.py migrate
+
+# Seed example/demo data (creates demo users and sample content)
+python manage.py seed_examples
+
+# Run development server
 python manage.py runserver
 ```
 
-Testing (API examples):
-```powershell
-Invoke-RestMethod -Uri 'http://127.0.0.1:8000/api/auth/register/' -Method POST -ContentType 'application/json' -Body '{"username":"alice","password":"pass123","email":"alice@example.com","role":"customer"}'
-$login = Invoke-RestMethod -Uri 'http://127.0.0.1:8000/api/auth/login/' -Method POST -ContentType 'application/json' -Body '{"username":"alice","password":"pass123"}'
-$token = $login.token
-Invoke-RestMethod -Uri 'http://127.0.0.1:8000/api/ads/' -Method POST -ContentType 'application/json' -Headers @{ Authorization = "Token $token" } -Body '{"title":"Paint","description":"Need paint","status":"open"}'
-```
+**API documentation (Swagger / OpenAPI):**
 
-If you prefer `curl` commands, use `curl.exe` in PowerShell or use a bash terminal.
+The interactive API documentation is an important artifact for QA and integration. We recommend using `drf-spectacular` to generate OpenAPI schema and serve an interactive Swagger UI. Please make sure the README or project docs include a link to the Swagger UI (for example `/api/schema/swagger-ui/`) so testers and integrators can quickly explore the API.
 
-### Seed Example Data
-Run the management command to populate demo users and a sample workflow (customer, contractor, support, admin plus an ad, proposal, comment, rating, ticket, and schedule entry). You can rerun it safely—it uses `get_or_create`.
+Also, include representative request and response examples for key endpoints in the schema so the interactive docs show concrete payloads for both requests and responses.
 
-```powershell
-python manage.py seed_examples
-```
+After starting the server, the documentation endpoints are available at:
 
-More work can be done (optional): file uploads, nested permissions, email notifications, more complex state transitions and workflows. If you want me to add any of those, let me know.
+- OpenAPI JSON: `http://localhost:8000/api/schema/`
+- Swagger UI: `http://localhost:8000/api/schema/swagger-ui/`
+- Redoc: `http://localhost:8000/api/schema/redoc/`
+
+**QA / manual testing tips:**
+- Run `python manage.py seed_examples` to create demo accounts and content that exercise common flows (create ad, submit proposal, accept/complete/confirm proposal, submit rating).
+- Use the examples shown in Swagger (or the example payloads you add to the schema) to make valid requests with tools like Postman, HTTPie, or `curl`.
+
+If you'd like, I can also prepare ready-to-run `curl` commands or a PowerShell script that exercises the main endpoints end-to-end for quick verification.
+
