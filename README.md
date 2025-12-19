@@ -13,20 +13,14 @@ This repository contains the backend implementation for a sample service called 
 **Quick start (local):**
 
 ```powershell
-# Activate virtual environment
 .\venv\Scripts\Activate.ps1
-
-# Install dependencies
 pip install -r requirements.txt
 
-# Create and apply migrations
 python manage.py makemigrations
 python manage.py migrate
 
-# Seed example/demo data (creates demo users and sample content)
 python manage.py seed_examples
 
-# Run development server
 python manage.py runserver
 ```
 
@@ -41,7 +35,17 @@ After starting the server, the documentation endpoints are available at:
 - OpenAPI JSON: `http://localhost:8000/api/schema/`
 - Swagger UI: `http://localhost:8000/api/schema/swagger-ui/`
 - Redoc: `http://localhost:8000/api/schema/redoc/`
-
 **QA / manual testing tips:**
 - Run `python manage.py seed_examples` to create demo accounts and content that exercise common flows (create ad, submit proposal, accept/complete/confirm proposal, submit rating).
-=
+- Use the same credentials and passphrase for login: `/api/auth/login/` accepts `username`, `email`, or `phone_number` along with `password`.
+- Emails and phone numbers are unique across users so the login endpoint can unambiguously map the identifier back to the right account.
+
+**Demo accounts (created by `seed_examples`)**
+Password for all: `DemoPass123`
+
+- Customer: `demo_customer` (`email: customer@example.com`, `phone: +989111000001`)
+- Customer: `demo_customer2` (`email: customer2@example.com`, `phone: +989111000002`)
+- Contractor: `demo_contractor` (`email: contractor@example.com`, `phone: +989222000001`)
+- Contractor: `demo_contractor2` (`email: contractor2@example.com`, `phone: +989222000002`)
+- Support: `demo_support` (`email: support@example.com`, `phone: +989333000001`)
+- Admin/Superuser: `demo_admin` (`email: admin@example.com`, `phone: +989444000001`)

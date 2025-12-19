@@ -52,6 +52,7 @@ class Comment(models.Model):
 class Rating(models.Model):
     contractor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='ratings_received')
     rater = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='ratings_given')
+    ad = models.ForeignKey(Ad, on_delete=models.CASCADE, related_name='ratings', null=True, blank=True)
     score = models.PositiveSmallIntegerField()
     comment = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -76,6 +77,16 @@ class Ticket(models.Model):
 
     def __str__(self):
         return f"Ticket {self.id} - {self.title} ({self.status})"
+
+
+class TicketMessage(models.Model):
+    ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name='messages')
+    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='ticket_messages')
+    text = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"TicketMessage {self.id} on Ticket {self.ticket_id}"
 
 
 class Schedule(models.Model):

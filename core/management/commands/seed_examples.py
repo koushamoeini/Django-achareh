@@ -18,8 +18,10 @@ class Command(BaseCommand):
             defaults={
                 'email': 'customer@example.com',
                 'role': 'customer',
+                'phone_number': '+989111000001',
             },
         )
+        customer.phone_number = '+989111000001'
         customer.set_password('DemoPass123')
         customer.save()
 
@@ -28,8 +30,10 @@ class Command(BaseCommand):
             defaults={
                 'email': 'customer2@example.com',
                 'role': 'customer',
+                'phone_number': '+989111000002',
             },
         )
+        customer2.phone_number = '+989111000002'
         customer2.set_password('DemoPass123')
         customer2.save()
 
@@ -38,8 +42,10 @@ class Command(BaseCommand):
             defaults={
                 'email': 'contractor@example.com',
                 'role': 'contractor',
+                'phone_number': '+989222000001',
             },
         )
+        contractor.phone_number = '+989222000001'
         contractor.set_password('DemoPass123')
         contractor.save()
 
@@ -48,8 +54,10 @@ class Command(BaseCommand):
             defaults={
                 'email': 'contractor2@example.com',
                 'role': 'contractor',
+                'phone_number': '+989222000002',
             },
         )
+        contractor2.phone_number = '+989222000002'
         contractor2.set_password('DemoPass123')
         contractor2.save()
 
@@ -58,8 +66,10 @@ class Command(BaseCommand):
             defaults={
                 'email': 'support@example.com',
                 'role': 'support',
+                'phone_number': '+989333000001',
             },
         )
+        support.phone_number = '+989333000001'
         support.set_password('DemoPass123')
         support.save()
 
@@ -67,6 +77,8 @@ class Command(BaseCommand):
             username='demo_admin',
             defaults={'email': 'admin@example.com', 'role': 'admin', 'is_superuser': True, 'is_staff': True},
         )
+        admin.phone_number = '+989444000001'
+        admin.phone_number = '+989444000001'
         admin.role = 'admin'
         admin.is_superuser = True
         admin.is_staff = True
@@ -151,9 +163,9 @@ class Command(BaseCommand):
         Comment.objects.get_or_create(ad=ad_open, author=customer2, defaults={'text': 'Please share your portfolio.'})
 
         # Ratings (multiple to produce averages)
-        Rating.objects.get_or_create(contractor=contractor, rater=customer, defaults={'score': 5, 'comment': 'Great communication.'})
-        Rating.objects.get_or_create(contractor=contractor, rater=customer2, defaults={'score': 4, 'comment': 'Good work.'})
-        Rating.objects.get_or_create(contractor=contractor2, rater=customer, defaults={'score': 5, 'comment': 'Excellent finish.'})
+        Rating.objects.get_or_create(contractor=contractor, rater=customer, ad=ad_assigned, defaults={'score': 5, 'comment': 'Great communication.'})
+        Rating.objects.get_or_create(contractor=contractor, rater=customer2, ad=ad_open, defaults={'score': 4, 'comment': 'Good work.'})
+        Rating.objects.get_or_create(contractor=contractor2, rater=customer, ad=ad_done, defaults={'score': 5, 'comment': 'Excellent finish.'})
 
         self.stdout.write("Creating sample tickets and schedules...")
 
@@ -170,6 +182,10 @@ class Command(BaseCommand):
         ticket1.assignee = support
         ticket1.status = 'in_progress'
         ticket1.save()
+
+        # Ticket replies by support
+        from core.models import TicketMessage
+        TicketMessage.objects.get_or_create(ticket=ticket1, author=support, defaults={'text': 'We are checking the billing schedule.'})
 
         ticket2, _ = Ticket.objects.get_or_create(
             title='Ad modification request',

@@ -2,7 +2,7 @@ from rest_framework import serializers
 from .models import Ad, Proposal
 from users.serializers import UserSerializer
 from .models import Comment
-from .models import Rating, Ticket
+from .models import Rating, Ticket, TicketMessage
 from .models import Schedule
 from django.db.models import Avg, Count
 
@@ -47,7 +47,7 @@ class RatingSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Rating
-        fields = ['id', 'contractor', 'rater', 'score', 'comment', 'created_at']
+        fields = ['id', 'contractor', 'rater', 'ad', 'score', 'comment', 'created_at']
 
 
 class TicketSerializer(serializers.ModelSerializer):
@@ -57,6 +57,14 @@ class TicketSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ticket
         fields = ['id', 'title', 'description', 'creator', 'assignee', 'status', 'created_at', 'updated_at']
+
+
+class TicketMessageSerializer(serializers.ModelSerializer):
+    author = UserSerializer(read_only=True)
+
+    class Meta:
+        model = TicketMessage
+        fields = ['id', 'ticket', 'author', 'text', 'created_at']
 
 
 class ScheduleSerializer(serializers.ModelSerializer):

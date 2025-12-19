@@ -1,6 +1,6 @@
 from rest_framework import generics, permissions, status, serializers
 from rest_framework import filters
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiExample
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -12,11 +12,34 @@ from .models import Comment
 from .serializers import RatingSerializer
 from .models import Rating
 from .models import Ticket
-from .serializers import TicketSerializer
+from .serializers import TicketSerializer, TicketMessageSerializer
 from .models import Schedule
 from .serializers import ScheduleSerializer
+from .models import TicketMessage
 
 
+@extend_schema_view(
+    post=extend_schema(
+        summary='Create an ad (customers only)',
+        examples=[
+            OpenApiExample(
+                'Ad create example',
+                value={
+                    'title': 'Paint the villa',
+                    'description': 'Need a contractor to repaint the villa in Tehran.',
+                    'status': 'open',
+                    'budget': '1500.00',
+                    'category': 'painting',
+                    'location': 'Tehran',
+                    'start_date': '2025-12-01',
+                    'end_date': '2026-01-01',
+                    'hours_per_day': '6.0'
+                },
+                request_only=True,
+            ),
+        ],
+    )
+)
 class AdListCreateView(generics.ListCreateAPIView):
     queryset = Ad.objects.all().order_by('-created_at')
     serializer_class = AdSerializer
@@ -48,6 +71,22 @@ class AdDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
 
 
+@extend_schema_view(
+    post=extend_schema(
+        summary='Create a proposal (contractors only)',
+        examples=[
+            OpenApiExample(
+                'Proposal create example',
+                value={
+                    'ad': 1,
+                    'price': '1450.00',
+                    'message': 'Available next week for the Paint the villa job.'
+                },
+                request_only=True,
+            ),
+        ],
+    )
+)
 class ProposalListCreateView(generics.ListCreateAPIView):
     queryset = Proposal.objects.all().order_by('-created_at')
     serializer_class = ProposalSerializer
@@ -72,6 +111,12 @@ class ProposalListCreateView(generics.ListCreateAPIView):
             return Proposal.objects.filter(ad__creator=user).order_by('-created_at')
         # support or admin or other roles see all
         return Proposal.objects.all().order_by('-created_at')
+
+
+class ProposalDetailView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Proposal.objects.all()
+    serializer_class = ProposalSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
 
 
 @extend_schema(summary='Accept a proposal')
@@ -164,6 +209,23 @@ class CommentDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
 
 
+@extend_schema_view(
+    post=extend_schema(
+        summary='Create a rating (customers only)',
+        examples=[
+            OpenApiExample(
+                'Rating create example',
+                value={
+                    'contractor': 1,
+                    'ad': 2,
+                    'score': 5,
+                    'comment': 'Great communication.'
+                },
+                request_only=True,
+            ),
+        ],
+    )
+)
 class RatingListCreateView(generics.ListCreateAPIView):
     serializer_class = RatingSerializer
 
@@ -171,14 +233,12 @@ class RatingListCreateView(generics.ListCreateAPIView):
         contractor_id = self.kwargs.get('contractor_id')
         min_score = self.request.query_params.get('min_score')
         max_score = self.request.query_params.get('max_score')
-        if contractor_id:
-            qs = Rating.objects.filter(contractor_id=contractor_id).order_by('-created_at')
-            if min_score:
-                qs = qs.filter(score__gte=int(min_score))
-            if max_score:
-                qs = qs.filter(score__lte=int(max_score))
-            return qs
+        ad_id = self.request.query_params.get('ad')
         qs = Rating.objects.all().order_by('-created_at')
+        if contractor_id:
+            qs = qs.filter(contractor_id=contractor_id)
+        if ad_id:
+            qs = qs.filter(ad_id=ad_id)
         if min_score:
             qs = qs.filter(score__gte=int(min_score))
         if max_score:
@@ -192,6 +252,7 @@ class RatingListCreateView(generics.ListCreateAPIView):
             raise PermissionDenied('Only customers can rate contractors')
         # Ensure contractor is a user with contractor role
         contractor_id = self.request.data.get('contractor')
+        ad_id = self.request.data.get('ad')
         if not contractor_id:
             raise serializers.ValidationError({'contractor': 'This field is required.'})
         from django.contrib.auth import get_user_model
@@ -204,9 +265,31 @@ class RatingListCreateView(generics.ListCreateAPIView):
         if contractor.role != 'contractor':
             from rest_framework.exceptions import ValidationError
             raise ValidationError('You can only rate contractors')
-        serializer.save(rater=self.request.user, contractor=contractor)
+        ad_obj = None
+        if ad_id:
+            try:
+                ad_obj = Ad.objects.get(pk=ad_id)
+            except Ad.DoesNotExist:
+                from rest_framework.exceptions import NotFound
+                raise NotFound('Ad not found')
+        serializer.save(rater=self.request.user, contractor=contractor, ad=ad_obj)
 
 
+@extend_schema_view(
+    post=extend_schema(
+        summary='Create a ticket',
+        examples=[
+            OpenApiExample(
+                'Ticket create example',
+                value={
+                    'title': 'Billing question',
+                    'description': 'Need clarification on payment schedule.'
+                },
+                request_only=True,
+            ),
+        ],
+    )
+)
 class TicketListCreateView(generics.ListCreateAPIView):
     serializer_class = TicketSerializer
     queryset = Ticket.objects.all().order_by('-created_at')
@@ -238,6 +321,41 @@ class TicketDetailView(generics.RetrieveUpdateDestroyAPIView):
             serializer.save(assignee=user)
             return
         serializer.save()
+
+
+@extend_schema_view(
+    post=extend_schema(
+        summary='Reply to a ticket (support only)',
+        examples=[
+            OpenApiExample(
+                'Ticket reply example',
+                value={
+                    'text': 'We are reviewing your issue and will update you shortly.'
+                },
+                request_only=True,
+            ),
+        ],
+    )
+)
+class TicketMessageListCreateView(generics.ListCreateAPIView):
+    serializer_class = TicketMessageSerializer
+
+    def get_queryset(self):
+        ticket_id = self.kwargs.get('ticket_id')
+        return TicketMessage.objects.filter(ticket_id=ticket_id).order_by('created_at')
+
+    def perform_create(self, serializer):
+        # Only support users can reply to tickets
+        if getattr(self.request.user, 'role', None) != 'support':
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied('Only support users can reply to tickets')
+        ticket_id = self.kwargs.get('ticket_id')
+        try:
+            ticket = Ticket.objects.get(pk=ticket_id)
+        except Ticket.DoesNotExist:
+            from rest_framework.exceptions import NotFound
+            raise NotFound('Ticket not found')
+        serializer.save(author=self.request.user, ticket=ticket)
 
 
 class ScheduleListCreateView(generics.ListCreateAPIView):
@@ -280,6 +398,28 @@ class ContractorProfileView(generics.RetrieveAPIView):
         data = serializer.data
         data['avg_rating'] = float(user.avg_rating) if user.avg_rating is not None else None
         data['ratings_count'] = user.ratings_count
+        return Response(data)
+
+
+class CustomerProfileView(generics.RetrieveAPIView):
+    serializer_class = ContractorProfileSerializer
+
+    def get(self, request, pk):
+        from django.contrib.auth import get_user_model
+        from django.db.models import Count
+        User = get_user_model()
+        try:
+            user = User.objects.annotate(ad_count=Count('ads')).get(pk=pk)
+        except User.DoesNotExist:
+            return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+        data = {
+            'id': user.id,
+            'username': user.username,
+            'email': user.email,
+            'role': user.role,
+            'ad_count': user.ad_count,
+            'ads': AdSerializer(user.ads.all().order_by('-created_at'), many=True).data,
+        }
         return Response(data)
 
 
